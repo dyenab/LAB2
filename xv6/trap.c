@@ -58,8 +58,8 @@ trap(struct trapframe *tf)
     lapiceoi();    
 
     struct proc *p = myproc();
-    if(p!=0&&p->scheduler!=0){
-      if(p->thread_count >= 2){
+    if(p!=0&&p->scheduler!=0 && p->thread_count >= 2){
+      if(ticks % 10 == 0){
         p->tf->eip = p->scheduler;
       }
     }
