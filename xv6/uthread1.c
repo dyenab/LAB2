@@ -24,6 +24,22 @@ thread_p  next_thread;
 
 extern void thread_switch(void);
 extern void thread_schedule(void);
+extern int thread_inc(void);
+extern int thread_dec(void);
+
+void 
+thread_init(void)
+{
+  uthread_init((int)thread_schedule);
+
+  // main() is thread 0, which will make the first invocation to
+  // thread_schedule().  it needs a stack so that the first thread_switch() can
+  // save thread 0's state.  thread_schedule() won't run the main thread ever
+  // again, because its state is set to RUNNING, and thread_schedule() selects
+  // a RUNNABLE thread.
+  current_thread = &all_thread[0];
+  current_thread->state = RUNNING;
+}
 
 void 
 thread_schedule(void)
@@ -51,24 +67,12 @@ thread_schedule(void)
 
   if (current_thread != next_thread) {         /* switch threads?  */
     next_thread->state = RUNNING;
+    if(current_thread != &all_thread[0]&&current_thread->state==RUNNING){
+      current_thread->state=RUNNABLE;
+    }  
     thread_switch();
   } else
     next_thread = 0;
-}
-
-void 
-thread_init(void)
-{
-  printf(1, "[thread_init()] thread_schedule ptr: 0x%x\n", (unsigned int)thread_schedule);
-  uthread_init((int)thread_schedule);
-
-  // main() is thread 0, which will make the first invocation to
-  // thread_schedule().  it needs a stack so that the first thread_switch() can
-  // save thread 0's state.  thread_schedule() won't run the main thread ever
-  // again, because its state is set to RUNNING, and thread_schedule() selects
-  // a RUNNABLE thread.
-  current_thread = &all_thread[0];
-  current_thread->state = RUNNING;
 }
 
 void 
@@ -82,13 +86,9 @@ thread_create(void (*func)())
   t->sp = (int) (t->stack + STACK_SIZE);   // set sp to the top of the stack
   t->sp -= 4;                              // space for return address
   * (int *) (t->sp) = (int)func;           // push return address on stack
-  t->sp -= 32;                             // space for registers that thread_switch expects
-  t->state = RUNNABLE;
-
-  printf(1, "created thread at 0x%x, sp = 0x%x\n", t, t->sp);
-  printf(1, "thread[%d] state = %d\n", t - all_thread, t->state);
-
-  
+  t->sp -= 28;                             // space for registers that thread_switch expects
+  t->state = RUNNABLE;  
+  thread_inc();
 }
 
 static void 
@@ -101,6 +101,9 @@ mythread(void)
   }
   printf(1, "my thread: exit\n");
   current_thread->state = FREE;
+  thread_dec();
+  thread_schedule();
+  __builtin_unreachable();
 }
 
 

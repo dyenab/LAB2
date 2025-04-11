@@ -156,6 +156,9 @@ int             fetchint(uint, int*);
 int             fetchstr(uint, char**);
 void            syscall(void);
 int             uthread_init(uint address);
+int             thread_inc(void);
+int             thread_dec(void);
+
 // timer.c
 void            timerinit(void);
 

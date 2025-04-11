@@ -101,7 +101,22 @@ sys_uthread_init (void)
 
   p = myproc();
   p->scheduler = addr;
+  
 
+  return 0;
+}
+
+int sys_thread_inc(void) {
+  struct proc* p;
+  p = myproc();
+  p->thread_count++;
+  return 0;
+}
+
+int sys_thread_dec(void) {
+  struct proc* p;
+  p = myproc();
+  p->thread_count--;
   return 0;
 }
 
