@@ -59,7 +59,9 @@ trap(struct trapframe *tf)
 
     struct proc *p = myproc();
     if(p!=0&&p->scheduler!=0){
-      p->tf->eip = p->scheduler;
+      if(p->thread_count >= 2){
+        p->tf->eip = p->scheduler;
+      }
     }
     
     break;

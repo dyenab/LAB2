@@ -21,3 +21,5 @@
 #define SYS_mkdir  20
 #define SYS_close  21
 #define SYS_uthread_init 22
+#define SYS_thread_inc 23
+#define SYS_thread_dec 24
