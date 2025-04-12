@@ -13,6 +13,7 @@
 #include "i8254.h"
 #include "arp.h"
 
+
 static void startothers(void);
 static void mpmain(void)  __attribute__((noreturn));
 extern pde_t *kpgdir;
