@@ -1,39 +1,3 @@
-#include "types.h"
-#include "defs.h"
-#include "param.h"
-#include "memlayout.h"
-#include "mmu.h"
-#include "proc.h"
-#include "x86.h"
-#include "traps.h"
-#include "spinlock.h"
-#include "i8254.h"
-
-// Interrupt descriptor table (shared by all CPUs).
-struct gatedesc idt[256];
-extern uint vectors[];  // in vectors.S: array of 256 entry pointers
-struct spinlock tickslock;
-uint ticks;
-
-void
-tvinit(void)
-{
-  int i;
-
-  for(i = 0; i < 256; i++)
-    SETGATE(idt[i], 0, SEG_KCODE<<3, vectors[i], 0);
-  SETGATE(idt[T_SYSCALL], 1, SEG_KCODE<<3, vectors[T_SYSCALL], DPL_USER);
-
-  initlock(&tickslock, "time");
-}
-
-void
-idtinit(void)
-{
-  lidt(idt, sizeof(idt));
-}
-
-//PAGEBREAK: 41
 void
 trap(struct trapframe *tf)
 {
@@ -54,16 +18,14 @@ trap(struct trapframe *tf)
       ticks++;
       wakeup(&ticks);
       release(&tickslock);
-    }
-    lapiceoi();    
+      struct proc *p = myproc();
 
-    struct proc *p = myproc();
-    if(p!=0&&p->scheduler!=0 && p->thread_count >= 2){
-      if(ticks % 10 == 0){
-        p->tf->eip = p->scheduler;
+      // 유저 프로세스이고, 유저 스케줄러가 등록되어 있으면
+      if (p && p->state == RUNNING && tf->cs == DPL_USER && p->scheduler != 0) {
+        tf->eip = p->scheduler;  // 다음 복귀 시 유저 스케줄러부터 시작
       }
     }
-    
+    lapiceoi();
     break;
   case T_IRQ0 + IRQ_IDE:
     ideintr();
@@ -90,7 +52,6 @@ trap(struct trapframe *tf)
     lapiceoi();
     break;
 
-  //PAGEBREAK: 13
   default:
     if(myproc() == 0 || (tf->cs&3) == 0){
       // In kernel, it must be our mistake.

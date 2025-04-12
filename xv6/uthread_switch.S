@@ -6,32 +6,19 @@
          */
 
 	.globl thread_switch
-thread_switch:
-	push %eax
-	push %ebx
-	push %ecx
-	push %edx
-	push %ebp
-    push %esi
-    push %edi
+  
+  thread_switch:
+    pushal
 
-	movl current_thread, %eax
-	movl %esp, (%eax)
+    movl current_thread, %eax
+    movl %esp, (%eax)     # save current esp
 
-	movl next_thread, %eax      # eax = next_thread  
-    movl (%eax), %esp           # esp = next_thread->sp 
+    movl next_thread, %eax
+    movl (%eax), %esp     # restore next esp
 
+    movl %eax, current_thread
     
-    movl %eax, current_thread   # current_thread = next_thread
+    movl $0, next_thread
 
-    pop %edi
-    pop %esi
-    pop %ebp 
-    pop %ebx
-    pop %edx
-    pop %ecx
-    pop %eax
-
-	movl $0, next_thread 
-	
-	ret    /* return to ra */
+    popal
+    ret

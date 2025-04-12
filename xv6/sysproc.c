@@ -90,33 +90,12 @@ sys_uptime(void)
   return xticks;
 }
 
-int 
-sys_uthread_init (void) 
+int sys_uthread_init(void)
 {
-  struct proc* p;
-  int addr;
-
-  if (argint(0, &addr) < 0)
+  int ptr;
+  if (argint(0, &ptr) < 0)
     return -1;
 
-  p = myproc();
-  p->scheduler = addr;
-  
-
+  uthread_sched_ptr = ptr;
   return 0;
 }
-
-int sys_thread_inc(void) {
-  struct proc* p;
-  p = myproc();
-  p->thread_count++;
-  return 0;
-}
-
-int sys_thread_dec(void) {
-  struct proc* p;
-  p = myproc();
-  p->thread_count--;
-  return 0;
-}
-
