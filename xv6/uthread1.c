@@ -30,6 +30,7 @@ extern int thread_dec(void);
 void 
 thread_init(void)
 {
+  printf(1, "★ thread_schedule addr = 0x%x\n", thread_schedule);
   uthread_init((int)thread_schedule);
   // main() is thread 0, which will make the first invocation to
   // thread_schedule().  it needs a stack so that the first thread_switch() can
