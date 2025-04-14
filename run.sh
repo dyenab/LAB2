@@ -3,4 +3,3 @@ qemu-system-x86_64 -bios /usr/share/ovmf/OVMF.fd \
 	-m 2048 -smp 1  \
 	-serial mon:stdio \
 	-vga std \
-	-nographic
