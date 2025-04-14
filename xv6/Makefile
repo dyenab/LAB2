@@ -168,6 +168,10 @@ _uthread2: uthread2.o uthread_switch.o
 	$(LD) $(LDFLAGS) -N -e main -Ttext 0 -o _uthread2 uthread2.o uthread_switch.o $(ULIB)
 	$(OBJDUMP) -S _uthread2 > uthread2.asm
 
+_uthread4: uthread4.o uthread_switch.o
+	$(LD) $(LDFLAGS) -N -e main -Ttext 0 -o _uthread4 uthread4.o uthread_switch.o $(ULIB)
+	$(OBJDUMP) -S _uthread4 > uthread4.asm
+
 mkfs: mkfs.c fs.h
 	gcc -Werror -Wall -o mkfs mkfs.c
 
@@ -197,6 +201,7 @@ UPROGS=\
 	_hello2\
 	_uthread1\
 	_uthread2\
+	_uthread4\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)
