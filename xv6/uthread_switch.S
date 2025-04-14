@@ -7,7 +7,7 @@
 
 	.globl thread_switch
 thread_switch:
-	push %eax
+	push %eax		#current_thread 레지스터 값들을 스택에 저장
 	push %ebx
 	push %ecx
 	push %edx
