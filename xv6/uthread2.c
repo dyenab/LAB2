@@ -65,7 +65,7 @@ thread_schedule(void)
   }
 
   if (next_thread == 0) {
-    if(current_thread->state==RUNNING){
+    if(current_thread->state==RUNNING){         // child가 하나만 남았을 때
       next_thread = current_thread;
     } else {  
     printf(2, "thread_schedule: no runnable threads\n");
@@ -76,8 +76,8 @@ thread_schedule(void)
   if (current_thread != next_thread) {         /* switch threads?  */
     next_thread->state = RUNNING;
     if(current_thread != &all_thread[0]&&current_thread->state==RUNNING){ 
-      current_thread->state=RUNNABLE;
-    } 
+      current_thread->state=RUNNABLE;          // main이 다시 스케줄링 되지 않고
+    }                                          // current_thread가 다시 스케줄링 되도록
     thread_switch();
   } else
     next_thread = 0;
@@ -94,13 +94,13 @@ thread_create(void (*func)())
   t->sp = (int) (t->stack + STACK_SIZE);   // set sp to the top of the stack
   t->sp -= 4;                              // space for return address
   
-  t->tid = t - all_thread;                 //child id = 배열 인덱스
-  t->ptid = current_thread->tid;           //parent id = 
+  t->tid = t - all_thread;                 // child id = 배열 인덱스
+  t->ptid = current_thread->tid;           // parent id = 현재 실행 중인 스레드의 tid
   
   * (int *) (t->sp) = (int)func;           // push return address on stack
   t->sp -= 28;                             // space for registers that thread_switch expects
   t->state = RUNNABLE;
-  thread_inc();
+  thread_inc();                            //thread_count++
 }
 
 static void 
@@ -109,34 +109,36 @@ thread_join_all(void)
   while(1){
     int has_child = 0;
     for (int i = 0; i < MAX_THREAD; i++){
-      if(all_thread[i].ptid==current_thread->tid&&all_thread[i].state!=FREE){
+      if(all_thread[i].ptid==current_thread->tid&&all_thread[i].state!=FREE){ // RUNNABLE or RUNNING 중인 child 찾기
         has_child = 1;
         break;
       }  
     }
-    if (!has_child){
+    if (!has_child){                   // child 없다면 mythread RUNNABLE
       all_thread[1].state = RUNNABLE;
       return ;
     }  
   
-    current_thread->state = WAIT;
+    current_thread->state = WAIT;      // child 있으면 WAIT
     thread_schedule();
   }  
 }
 
-static void wake_parent(void){
+static void 
+wake_parent(void)
+{
   int last_child = 0;
   for(int i = 0; i < MAX_THREAD; i++){
-    if(all_thread[i].state !=FREE && all_thread[i].state !=WAIT){
-      last_child = 1;
+    if(all_thread[i].state !=FREE && all_thread[i].state !=WAIT){ //RUNNING or RUNNABLE이면 
+      last_child = 1;                                             //child 남아있음
       break;
     }
 
   }
   if(!last_child){
     for(int i = 0; i<MAX_THREAD; i++){
-      if(all_thread[i].tid == current_thread->ptid && all_thread[i].state==WAIT){
-        all_thread[i].state = RUNNABLE;
+      if(all_thread[i].tid == current_thread->ptid && all_thread[i].state==WAIT){  // mythread 찾기
+        all_thread[i].state = RUNNABLE;                                            // WAKE->RUNNABLE
         break;
       }
     }
@@ -153,8 +155,8 @@ child_thread(void)
   }
   printf(1, "child thread: exit\n");
   current_thread->state = FREE;
-  thread_dec();
-  wake_parent();
+  thread_dec();            // thread_count--
+  wake_parent();           // mythread WAKE->RUNNABLE
   thread_schedule();
 }
 
@@ -169,7 +171,7 @@ mythread(void)
   thread_join_all();
   printf(1, "my thread: exit\n");
   current_thread->state = FREE;
-  thread_dec();
+  thread_dec();            // thread_count--;
   thread_schedule();
 }
 
