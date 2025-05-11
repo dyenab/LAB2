@@ -132,9 +132,9 @@ sys_setSchedPolicy(void)
   if (argint(0, &policy) < 0)
     return -1;
 
-  pushcli();  // 🔒 인터럽트 끄고
+  pushcli();  // 인터럽트 끔
   mycpu()->sched_policy = policy;
-  popcli();   // 🔓 복원
+  popcli();   // 인터럽트 켬
   return 0;
 }
 
