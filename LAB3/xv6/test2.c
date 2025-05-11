@@ -31,8 +31,7 @@ int main(void)
             exit();
         } else if (pid == 0) {
             // Child
-            if (pid == 0) {
-                // 자식 프로세스는 딱 50번만 실행
+            while (1) {
                 for (int k = 0; k < 50; k++) {
                     if (i == 0) {
                         workload(300000); // Q3
@@ -48,9 +47,8 @@ int main(void)
                         workload(500000000); // Q0
                     }
                 }
-                exit(); 
             }
-            
+
         } else {
             pids[i] = pid;
         }
