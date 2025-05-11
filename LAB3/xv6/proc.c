@@ -395,7 +395,7 @@ scheduler(void)
          
           int pr = p->priority;
           if (policy == 2) {
-            // 🔍 강등 조건 + 실시간 디버그 출력
+            // 강등 조건 + cheat 허용
             if ((pr == 3 && p->ticks[3] >= 8) ||
                 (pr == 2 && p->ticks[2] >= 16) ||
                 (pr == 1 && p->ticks[1] >= 32)) {
