@@ -336,6 +336,7 @@ scheduler(void)
   c->proc = 0;
 
   for (;;) {
+    // Enable interrupts on this processor.
     sti();
     acquire(&ptable.lock);
     int policy = c->sched_policy;
@@ -346,17 +347,22 @@ scheduler(void)
         if (p->state != RUNNABLE)
           continue;
 
+        // Switch to chosen process.  It is the process's job
+        // to release ptable.lock and then reacquire it
+        // before jumping back to us.
         c->proc = p;
         switchuvm(p);
         p->state = RUNNING;
 
         swtch(&(c->scheduler), p->context);
         switchkvm();
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
         c->proc = 0;
       }
 
     } else {
-      // MLFQ with variations depending on policy
+      // MLFQ
 
       // Boosting 조건 (정책 3번은 boosting X)
       if (policy != 3) {
