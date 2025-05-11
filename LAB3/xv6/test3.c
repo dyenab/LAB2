@@ -37,11 +37,9 @@ int main(void) {
                 // 긴 workload로 time slice 소진 유도
                 workload(150000000);
             }
-            sleep(50);  // 너무 길지 않게 조절
-            exit();
+            exit(); 
         } else {
             pids[i] = pid;
-            printf(1, "[parent] child %d created, real pid = %d\n", i + 1, pid);
         }
     }
 
