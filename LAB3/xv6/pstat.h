@@ -15,6 +15,5 @@ struct pstat {
     int ticks[NPROC][4];  
     // number of ticks each process has waited before being scheduled
     int wait_ticks[NPROC][4]; 
-    int total_ticks[NPROC][4];
   };
   

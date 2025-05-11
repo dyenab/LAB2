@@ -64,7 +64,6 @@ trap(struct trapframe *tf)
     if (cp) {
       // 현재 실행 중인 프로세스의 실행 시간 누적
       cp->ticks[cp->priority]++;
-      cp->total_ticks[cp->priority]++;
     }
   
     // 나머지 RUNNABLE 프로세스들의 대기 시간 누적

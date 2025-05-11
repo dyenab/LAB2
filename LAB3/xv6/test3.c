@@ -64,9 +64,6 @@ int main(void) {
                 printf(1, "wait_ticks : [%d %d %d %d]\n",
                        st.wait_ticks[i][0], st.wait_ticks[i][1],
                        st.wait_ticks[i][2], st.wait_ticks[i][3]);
-                printf(1, "total_ticks: [%d %d %d %d]\n",
-                    st.total_ticks[i][0], st.total_ticks[i][1],
-                    st.total_ticks[i][2], st.total_ticks[i][3]);
                 printf(1, "\n");
             }
         }
