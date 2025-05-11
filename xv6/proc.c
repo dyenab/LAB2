@@ -95,10 +95,7 @@ found:
 
   release(&ptable.lock);
 
-  p->priority = 3;
-  memset(p->ticks, 0, sizeof(p->ticks));
-  memset(p->wait_ticks, 0, sizeof(p->wait_ticks));
-  
+
   // Allocate kernel stack.
   if((p->kstack = kalloc()) == 0){
     p->state = UNUSED;
@@ -334,99 +331,35 @@ scheduler(void)
   struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
-
-  for (;;) {
+  
+  for(;;){
+    // Enable interrupts on this processor.
     sti();
+
+    // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    int policy = c->sched_policy;
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->state != RUNNABLE)
+        continue;
 
-    if (policy == 0) {
-      // Round-robin
-      for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
-        if (p->state != RUNNABLE)
-          continue;
+      // Switch to chosen process.  It is the process's job
+      // to release ptable.lock and then reacquire it
+      // before jumping back to us.
+      c->proc = p;
+      switchuvm(p);
+      p->state = RUNNING;
 
-        c->proc = p;
-        switchuvm(p);
-        p->state = RUNNING;
+      swtch(&(c->scheduler), p->context);
+      switchkvm();
 
-        swtch(&(c->scheduler), p->context);
-        switchkvm();
-        c->proc = 0;
-      }
-
-    } else {
-      // MLFQ with variations depending on policy
-
-      // Boosting 조건 (정책 3번은 boosting X)
-      if (policy != 3) {
-        for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
-          if (p->state != RUNNABLE)
-            continue;
-
-          int prio = p->priority;
-          if ((prio == 2 && p->wait_ticks[2] >= 160) ||
-              (prio == 1 && p->wait_ticks[1] >= 320) ||
-              (prio == 0 && p->wait_ticks[0] >= 500)) {
-            if (p->priority < 3)
-              p->priority++;
-            memset(p->wait_ticks, 0, sizeof(p->wait_ticks));
-          }
-        }
-      }
-
-      // Time slice 설정
-      int slice[4] = { -1, 32, 16, 8 };
-
-      int scheduled = 0;
-      for (int level = 3; level >= 0 && !scheduled; level--) {
-        for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
-          if (p->state != RUNNABLE || p->priority != level)
-            continue;
-
-          c->proc = p;
-          switchuvm(p);
-          p->state = RUNNING;
-
-          swtch(&(c->scheduler), p->context);
-          switchkvm();
-          c->proc = 0;
-
-         
-          int pr = p->priority;
-          if (policy == 2) {
-            // 🔍 강등 조건 + 실시간 디버그 출력
-            if ((pr == 3 && p->ticks[3] >= 8) ||
-                (pr == 2 && p->ticks[2] >= 16) ||
-                (pr == 1 && p->ticks[1] >= 32)) {
-    
-                if (p->priority > 0)
-                    p->priority--; 
-              }
-              memset(p->ticks, 0, sizeof(p->ticks));    
-          }        
-          else {
-            // 정책 1, 3은 tick 비교 + 초기화 = cheat 방지
-            if ((pr == 3 && p->ticks[3] >= slice[3]) ||
-                (pr == 2 && p->ticks[2] >= slice[2]) ||
-                (pr == 1 && p->ticks[1] >= slice[1])) {
-              if (p->priority > 0)
-                p->priority--;
-              memset(p->ticks, 0, sizeof(p->ticks));
-            }
-          }
-        
-          scheduled = 1;
-          break;
-        }
-      }
+      // Process is done running for now.
+      // It should have changed its p->state before coming back.
+      c->proc = 0;
     }
-
     release(&ptable.lock);
+
   }
 }
-
-
 
 // Enter scheduler.  Must hold only ptable.lock
 // and have changed proc->state. Saves and restores

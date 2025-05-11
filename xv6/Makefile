@@ -89,10 +89,6 @@ OBJDUMP = $(TOOLPREFIX)objdump
 #CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -O2 -Wall -MD -ggdb -m32 -Werror -fno-omit-frame-pointer
 CFLAGS = -fno-pic -static -fno-builtin -fno-strict-aliasing -fvar-tracking -fvar-tracking-assignments -O0 -g -Wall -MD -gdwarf-2 -m32 -Werror -fno-omit-frame-pointer
 CFLAGS += $(shell $(CC) -fno-stack-protector -E -x c /dev/null >/dev/null 2>&1 && echo -fno-stack-protector)
-GCCVER = $(shell expr `gcc -dumpversion | cut -f1 -d.` \>= 12)
-ifeq "$(GCCVER)" "1"
-        CFLAGS += -Wno-error=infinite-recursion
-endif
 ASFLAGS = -m32 -gdwarf-2 -Wa,-divide
 # FreeBSD ld wants ``elf_i386_fbsd''
 LDFLAGS += -m $(shell $(LD) -V | grep elf_i386 2>/dev/null | head -n 1)
@@ -164,6 +160,18 @@ _forktest: forktest.o $(ULIB)
 	$(LD) $(LDFLAGS) -N -e main -Ttext 0 -o _forktest forktest.o ulib.o usys.o
 	$(OBJDUMP) -S _forktest > forktest.asm
 
+_uthread1: uthread1.o uthread_switch.o
+	$(LD) $(LDFLAGS) -N -e main -Ttext 0 -o _uthread1 uthread1.o uthread_switch.o $(ULIB)
+	$(OBJDUMP) -S _uthread1 > uthread1.asm
+
+_uthread2: uthread2.o uthread_switch.o
+	$(LD) $(LDFLAGS) -N -e main -Ttext 0 -o _uthread2 uthread2.o uthread_switch.o $(ULIB)
+	$(OBJDUMP) -S _uthread2 > uthread2.asm
+
+_uthread4: uthread4.o uthread_switch.o
+	$(LD) $(LDFLAGS) -N -e main -Ttext 0 -o _uthread4 uthread4.o uthread_switch.o $(ULIB)
+	$(OBJDUMP) -S _uthread4 > uthread4.asm
+
 mkfs: mkfs.c fs.h
 	gcc -Werror -Wall -o mkfs mkfs.c
 
@@ -189,8 +197,11 @@ UPROGS=\
 	_usertests\
 	_wc\
 	_zombie\
-	_test2\
-	_test3\
+	_hello\
+	_hello2\
+	_uthread1\
+	_uthread2\
+	_uthread4\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)
