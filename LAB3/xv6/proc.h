@@ -53,7 +53,6 @@ struct proc {
   int priority;
   int ticks[4];
   int wait_ticks[4];
-  int total_ticks[4];   // 큐별 누적 tick 시간 (새로 추가)
 };
 
 // Process memory is laid out contiguously, low addresses first:

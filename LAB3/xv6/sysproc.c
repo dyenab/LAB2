@@ -116,7 +116,6 @@ sys_getpinfo(void)
     for (int j = 0; j < 4; j++) {
       ps->ticks[i][j] = p->ticks[j];
       ps->wait_ticks[i][j] = p->wait_ticks[j];
-      ps->total_ticks[i][j] = p->total_ticks[j];
     }
 
   }
