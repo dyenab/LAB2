@@ -31,13 +31,13 @@ int main(void) {
                 // yield() 유도용 짧은 작업 반복
                 for (int k = 0; k < 32; k++) {
                     workload(3000000);
-                    sleep(10);
+                    sleep(5);
                 }
             } else {
                 // 긴 workload로 time slice 소진 유도
                 workload(150000000);
             }
-            exit(); 
+            exit();
         } else {
             pids[i] = pid;
         }

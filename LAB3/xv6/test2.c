@@ -89,8 +89,9 @@ int main(void)
         wait();
     }
 
-    printf(1, "[TEST DONE] Hit Ctrl-a x to exit QEMU\n");
     exit();
 }
+
+
 
 

@@ -22,3 +22,4 @@
 #define SYS_close  21
 #define SYS_getpinfo 22
 #define SYS_setSchedPolicy 23
+#define SYS_getqinfo  24
