@@ -25,6 +25,14 @@ fetchint(uint addr, int *ip)
   return 0;
 }
 
+int sys_getqinfo(void) {
+  int pid;
+  if (argint(0, &pid) < 0)
+      return -1;
+
+  return getqinfo(pid); 
+}
+
 // Fetch the nul-terminated string at addr from the current process.
 // Doesn't actually copy the string - just sets *pp to point at it.
 // Returns length of string, not including nul.
@@ -105,6 +113,7 @@ extern int sys_write(void);
 extern int sys_uptime(void);
 extern int sys_getpinfo(void);
 extern int sys_setSchedPolicy(void);
+extern int sys_getqinfo(void);
 
 static int (*syscalls[])(void) = {
 [SYS_fork]    sys_fork,
@@ -130,6 +139,7 @@ static int (*syscalls[])(void) = {
 [SYS_close]   sys_close,
 [SYS_getpinfo] sys_getpinfo,
 [SYS_setSchedPolicy] sys_setSchedPolicy,
+[SYS_getqinfo]  sys_getqinfo,
 
 };
 

@@ -21,6 +21,21 @@ extern void trapret(void);
 
 static void wakeup1(void *chan);
 
+int getqinfo(int pid) {
+  struct proc *p;
+  acquire(&ptable.lock);
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+      if(p->pid == pid) {
+          cprintf("Process %d is in Queue %d\n", pid, p->priority);
+          cprintf("Wait time: %d ticks\n", p->wait_ticks);
+          release(&ptable.lock);
+          return p->priority;          
+        }
+  }
+  release(&ptable.lock);
+  return -1; 
+}
+
 void
 pinit(void)
 {
@@ -374,8 +389,10 @@ scheduler(void)
           if ((prio == 2 && p->wait_ticks[2] >= 160) ||
               (prio == 1 && p->wait_ticks[1] >= 320) ||
               (prio == 0 && p->wait_ticks[0] >= 500)) {
-            if (p->priority < 3)
+            if (p->priority < 3){
+
               p->priority++;
+            }  
             memset(p->wait_ticks, 0, sizeof(p->wait_ticks));
           }
         }

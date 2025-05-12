@@ -26,6 +26,7 @@ int sleep(int);
 int uptime(void);
 int getpinfo(struct pstat *);
 int setSchedPolicy(int policy);
+int getqinfo(int);
 
 // ulib.c
 int stat(char*, struct stat*);
