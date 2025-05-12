@@ -381,9 +381,6 @@ scheduler(void)
         }
       }
 
-      // Time slice 설정
-      int slice[4] = { -1, 32, 16, 8 };
-
       int scheduled = 0;
       for (int level = 3; level >= 0 && !scheduled; level--) {
         for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
@@ -413,9 +410,9 @@ scheduler(void)
           }        
           else {
             // 정책 1, 3은 tick 비교 + 초기화 = cheat 방지
-            if ((pr == 3 && p->ticks[3] >= slice[3]) ||
-                (pr == 2 && p->ticks[2] >= slice[2]) ||
-                (pr == 1 && p->ticks[1] >= slice[1])) {
+            if ((pr == 3 && p->ticks[3] >= 8) ||
+                (pr == 2 && p->ticks[2] >= 16) ||
+                (pr == 1 && p->ticks[1] >= 32)) {
               if (p->priority > 0)
                 p->priority--;
               memset(p->ticks, 0, sizeof(p->ticks));
