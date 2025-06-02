@@ -21,6 +21,8 @@ extern void trapret(void);
 
 static void wakeup1(void *chan);
 
+pte_t* walkpgdir(pde_t *pgdir, const void *va, int alloc);
+
 void
 pinit(void)
 {
@@ -95,10 +97,7 @@ found:
 
   release(&ptable.lock);
 
-  p->priority = 3;
-  memset(p->ticks, 0, sizeof(p->ticks));
-  memset(p->wait_ticks, 0, sizeof(p->wait_ticks));
-  
+
   // Allocate kernel stack.
   if((p->kstack = kalloc()) == 0){
     p->state = UNUSED;
@@ -334,106 +333,35 @@ scheduler(void)
   struct proc *p;
   struct cpu *c = mycpu();
   c->proc = 0;
-
-  for (;;) {
+  
+  for(;;){
     // Enable interrupts on this processor.
     sti();
+
+    // Loop over process table looking for process to run.
     acquire(&ptable.lock);
-    int policy = c->sched_policy;
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->state != RUNNABLE)
+        continue;
 
-    if (policy == 0) {
-      // Round-robin
-      for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
-        if (p->state != RUNNABLE)
-          continue;
+      // Switch to chosen process.  It is the process's job
+      // to release ptable.lock and then reacquire it
+      // before jumping back to us.
+      c->proc = p;
+      switchuvm(p);
+      p->state = RUNNING;
 
-        // Switch to chosen process.  It is the process's job
-        // to release ptable.lock and then reacquire it
-        // before jumping back to us.
-        c->proc = p;
-        switchuvm(p);
-        p->state = RUNNING;
+      swtch(&(c->scheduler), p->context);
+      switchkvm();
 
-        swtch(&(c->scheduler), p->context);
-        switchkvm();
-        // Process is done running for now.
-        // It should have changed its p->state before coming back.
-        c->proc = 0;
-      }
-
-    } else {
-      // MLFQ
-
-      // Boosting 조건 (정책 3번은 boosting X)
-      if (policy != 3) {
-        for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
-          if (p->state != RUNNABLE)
-            continue;
-
-          int prio = p->priority;
-          if ((prio == 2 && p->wait_ticks[2] >= 160) ||
-              (prio == 1 && p->wait_ticks[1] >= 320) ||
-              (prio == 0 && p->wait_ticks[0] >= 500)) {
-            if (p->priority < 3)
-              p->priority++;
-            memset(p->wait_ticks, 0, sizeof(p->wait_ticks));
-          }
-        }
-      }
-
-      int scheduled = 0;
-      for (int level = 3; level >= 0 && !scheduled; level--) {
-        for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
-          if (p->state != RUNNABLE || p->priority != level)
-            continue;
-
-          c->proc = p;
-          switchuvm(p);
-          p->state = RUNNING;
-
-          swtch(&(c->scheduler), p->context);
-          switchkvm();
-          c->proc = 0;
-
-         
-          int pr = p->priority;
-          // policy == 2일 때의 강등
-          if (policy == 2) {
-            if ((pr == 3 && p->ticks[3] >= 8) ||
-                (pr == 2 && p->ticks[2] >= 16) ||
-                (pr == 1 && p->ticks[1] >= 32)) {
-              if (p->priority > 0)
-                p->priority--;
-
-              // 🔥 잘못된 전체 초기화 ❌
-              // memset(p->ticks, 0, sizeof(p->ticks));
-
-              // ✅ 올바른 부분 초기화
-              p->ticks[pr] = 0;
-            }
-          }       
-          else {
-            // 정책 1, 3은 tick 비교 + 초기화 = cheat 방지
-            if ((pr == 3 && p->ticks[3] >= 8) ||
-                (pr == 2 && p->ticks[2] >= 16) ||
-                (pr == 1 && p->ticks[1] >= 32)) {
-              if (p->priority > 0)
-                p->priority--;
-              memset(p->ticks, 0, sizeof(p->ticks));
-            }
-          }
-        
-          scheduled = 1;
-          break;
-        }
-      }
+      // Process is done running for now.
+      // It should have changed its p->state before coming back.
+      c->proc = 0;
     }
-
     release(&ptable.lock);
+
   }
 }
-
-
 
 // Enter scheduler.  Must hold only ptable.lock
 // and have changed proc->state. Saves and restores
@@ -611,4 +539,39 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+int 
+printpt(int pid) {
+  struct proc *p;
+  pde_t *pgdir;
+  pte_t *pte;
+  uint a;
+
+  // 프로세스 찾기
+  for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+    if (p->pid == pid)
+      break;
+  }
+  if (p == 0 || p->pid != pid)
+    return -1;
+
+  pgdir = p->pgdir;
+  cprintf("START PAGE TABLE (pid %d)\n", pid);
+
+  // 유저 영역 전체 순회 (0 ~ KERNBASE), 페이지 단위
+  for (a = 0; a < KERNBASE; a += PGSIZE) {
+    pte = walkpgdir(pgdir, (void *)a, 0);  // PTE가 없으면 생성하지 않음
+    if (pte && (*pte & PTE_P)) {
+      // 가상 페이지 번호, 사용자/커널 모드, 읽기/쓰기, 물리 프레임 번호
+      cprintf("%x P %c %c %x\n",
+              a >> 12,
+              (*pte & PTE_U) ? 'U' : 'K',
+              (*pte & PTE_W) ? 'W' : '-',
+              PTE_ADDR(*pte) >> 12);
+    }
+  }
+
+  cprintf("END PAGE TABLE\n");
+  return 0;
 }
