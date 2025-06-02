@@ -20,7 +20,7 @@ extern void forkret(void);
 extern void trapret(void);
 
 static void wakeup1(void *chan);
-pte_t *walkpgdir(pde_t *pgdir, const void *va, int alloc);
+pte_t* walkpgdir(pde_t *pgdir, const void *va, int alloc);
 
 void
 pinit(void)
@@ -93,7 +93,7 @@ allocproc(void)
 found:
   p->state = EMBRYO;
   p->pid = nextpid++;
-  
+
   release(&ptable.lock);
 
 
@@ -191,9 +191,6 @@ fork(void)
   struct proc *np;
   struct proc *curproc = myproc();
 
-  if (curproc->sz < KERNBASE - PGSIZE)
-    curproc->sz = KERNBASE - PGSIZE;
-
   // Allocate process.
   if((np = allocproc()) == 0){
     return -1;
@@ -210,10 +207,8 @@ fork(void)
   np->parent = curproc;
   *np->tf = *curproc->tf;
 
-
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
-
 
   for(i = 0; i < NOFILE; i++)
     if(curproc->ofile[i])
@@ -229,6 +224,7 @@ fork(void)
   np->state = RUNNABLE;
 
   release(&ptable.lock);
+
   return pid;
 }
 
@@ -346,7 +342,7 @@ scheduler(void)
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
       if(p->state != RUNNABLE)
         continue;
-  
+
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
@@ -545,27 +541,21 @@ procdump(void)
 }
 
 int 
-printpt(int pid) 
-{ 
+printpt(int pid) {
   struct proc *p;
+
+  // 프로세스 찾기
   for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
     if (p->pid == pid)
       break;
   }
-
-  if (p == &ptable.proc[NPROC]) {
-    cprintf("printpt: pid %d not found\n", pid);
+  if (p == 0 || p->pid != pid)
     return -1;
-  }
-
-  if (p->pgdir == 0) {
-    cprintf("printpt: pid %d has no pgdir\n", pid);
-    return -1;
-  } 
 
   cprintf("START PAGE TABLE (pid %d)\n", pid);
 
-  for (uint va = 0; va < KERNBASE; va += PGSIZE) {
+  // 유저 영역 전체 순회 (0 ~ KERNBASE), 페이지 단위
+   for (uint va = 0; va < KERNBASE; va += PGSIZE) {
     pte_t *pte = walkpgdir(p->pgdir, (void *)va, 0);
     if (pte && (*pte & PTE_P)) {
       const char *u = (*pte & PTE_U) ? "U" : "K";
@@ -575,7 +565,6 @@ printpt(int pid)
       cprintf("%x P %s %s %x\n", vpn, u, w, ppn);
     }
   }
-
 
   cprintf("END PAGE TABLE\n");
   return 0;

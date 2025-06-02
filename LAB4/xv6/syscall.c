@@ -17,6 +17,8 @@
 int
 fetchint(uint addr, int *ip)
 {
+  // struct proc *curproc = myproc();
+
   if(addr >= KERNBASE || addr+4 > KERNBASE)
     return -1;
   *ip = *(int*)(addr);
@@ -30,6 +32,7 @@ int
 fetchstr(uint addr, char **pp)
 {
   char *s, *ep;
+  // struct proc *curproc = myproc();
 
   if(addr >= KERNBASE)
     return -1;
@@ -56,6 +59,7 @@ int
 argptr(int n, char **pp, int size)
 {
   int i;
+  // struct proc *curproc = myproc();
  
   if(argint(n, &i) < 0)
     return -1;
@@ -99,6 +103,7 @@ extern int sys_unlink(void);
 extern int sys_wait(void);
 extern int sys_write(void);
 extern int sys_uptime(void);
+
 extern int sys_printpt(void);
 
 static int (*syscalls[])(void) = {
@@ -123,6 +128,7 @@ static int (*syscalls[])(void) = {
 [SYS_link]    sys_link,
 [SYS_mkdir]   sys_mkdir,
 [SYS_close]   sys_close,
+
 [SYS_printpt] sys_printpt,
 };
 
