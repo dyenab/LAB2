@@ -45,20 +45,20 @@ sys_getpid(void)
 int
 sys_sbrk(void)
 {
-  int addr;
   int n;
-  struct proc *p = myproc();
-
   if(argint(0, &n) < 0)
     return -1;
-  addr = p->sz;
-  
-  if(n < 0 && addr + n < 0){
-    return -1;
-  }
-  
-  p->sz += n;
 
+  struct proc *p = myproc();
+  int addr = p->sz;
+
+  if(n < 0){
+    // 줄일 때는 여전히 메모리 해제 필요
+    if(deallocuvm(p->pgdir, p->sz, p->sz + n) == 0)
+      return -1;
+  }
+
+  p->sz += n; // 물리 메모리 할당 X, sz만 증가
   return addr;
 }
 
@@ -96,13 +96,14 @@ sys_uptime(void)
   return xticks;
 }
 
-int sys_printpt(void)
+int
+sys_printpt(void)
 {
   int pid;
 
   if (argint(0, &pid) < 0)
     return -1;
-
+  
   printpt(pid);
   return 0;
 }

@@ -9,13 +9,15 @@
 #include "spinlock.h"
 #include "i8254.h"
 
+int mappages(pde_t*, void*, uint, uint, int);
+pte_t* walkpgdir(pde_t *pgdir, const void *va, int alloc);
+void lcr3(uint);
+
 // Interrupt descriptor table (shared by all CPUs).
 struct gatedesc idt[256];
 extern uint vectors[];  // in vectors.S: array of 256 entry pointers
 struct spinlock tickslock;
 uint ticks;
-int mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm);
-pte_t *walkpgdir(pde_t *pgdir, const void *va, int alloc);
 
 void
 tvinit(void)
@@ -87,37 +89,17 @@ trap(struct trapframe *tf)
   case T_PGFLT: {
     uint fault_va = rcr2();
     uint va = PGROUNDDOWN(fault_va);
-    struct proc *p = myproc();
-    //cprintf("trap 14\n");
-    //cprintf("[trap] page fault pid=%d name=%s va=0x%x eip=0x%x esp=0x%x\n", p ? p->pid : -1, p ? p->name : "(null)", fault_va, tf->eip, tf->esp); 
-    
-    if (p == 0)
-      panic("page fault with no process");
-
-    /**if (va >= p->sz) {
-      p->killed = 1;
-      break;
-    } **/
-    
-    char *mem = kalloc();
-    if (mem == 0) {
-      cprintf("trap: out of memory\n");
-      p->killed = 1;
+    char* mem = kalloc();
+    if(mem == 0){
+      cprintf("allocuvm out of memory\n");
       break;
     }
+
     memset(mem, 0, PGSIZE);
-    if (mappages(p->pgdir, (char*)va, PGSIZE, V2P(mem), PTE_W | PTE_U) < 0) {
-      kfree(mem);
-      cprintf("kill kfree(mem)\n");
-      p->killed = 1;
-      break;
-    }
-    if (va + PGSIZE > p->sz)
-      p->sz = va + PGSIZE;
-
-    lcr3(V2P(p->pgdir));
-    return;
-
+    mappages(myproc()->pgdir, (char*)va, PGSIZE, V2P(mem), PTE_W | PTE_U | PTE_P);
+    walkpgdir(myproc()->pgdir, (char*)va, 0);  // 확인용
+    lcr3(V2P(myproc()->pgdir));                // TLB flush
+    break;
   }
 
   //PAGEBREAK: 13
@@ -128,33 +110,14 @@ trap(struct trapframe *tf)
               tf->trapno, cpuid(), tf->eip, rcr2());
       panic("trap");
     }
+    // In user space, assume process misbehaved.
+    cprintf("pid %d %s: trap %d err %d on cpu %d "
+            "eip 0x%x addr 0x%x--kill proc\n",
+            myproc()->pid, myproc()->name, tf->trapno,
+            tf->err, cpuid(), tf->eip, rcr2());
+    myproc()->killed = 1;
+  }
 
-    // In user space, unexpected trap: print extra diagnostics
-    struct proc *p = myproc();
-    uint eip = tf->eip;
-    uint esp = tf->esp;
-    cprintf("pid %d %s: trap %d err %d on cpu %d eip 0x%x addr 0x%x--kill proc\n",
-            p->pid, p->name, tf->trapno, tf->err, cpuid(), eip, rcr2());
-
-    pte_t *pte_eip = walkpgdir(p->pgdir, (void*)eip, 0);
-    if (pte_eip && (*pte_eip & PTE_P)) {
-      cprintf("  [trap] eip 0x%x is mapped to PA: 0x%x, flags=0x%x\n",
-              eip, PTE_ADDR(*pte_eip), PTE_FLAGS(*pte_eip));
-    } else {
-      cprintf("  [trap] eip 0x%x is NOT mapped!\n", eip);
-    }
-
-    pte_t *pte_esp = walkpgdir(p->pgdir, (void*)esp, 0);
-    if (pte_esp && (*pte_esp & PTE_P)) {
-      cprintf("  [trap] esp 0x%x is mapped to PA: 0x%x, flags=0x%x\n",
-              esp, PTE_ADDR(*pte_esp), PTE_FLAGS(*pte_esp));
-    } else {
-      cprintf("  [trap] esp 0x%x is NOT mapped!\n", esp);
-    }
-
-    p->killed = 1;
-    break;
-  }  
   // Force process exit if it has been killed and is in user space.
   // (If it is still executing in the kernel, let it keep running
   // until it gets to the regular system call return.)
@@ -171,4 +134,3 @@ trap(struct trapframe *tf)
   if(myproc() && myproc()->killed && (tf->cs&3) == DPL_USER)
     exit();
 }
-

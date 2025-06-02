@@ -7,8 +7,6 @@
 
 static int recurse(int n)
 {
-  int x;
-  printf(1, "[debug] level %d: &x = 0x%x\n", n, &x);
   if(n == 0)
     return 0;
   return n + recurse(n - 1);
@@ -29,5 +27,5 @@ int main(int argc, char *argv[])
   m = recurse(n);
   printf(1, "Yielded a value of %d\n", m);
   printpt(getpid()); // Uncomment for the test.
-  exit(); 
+  exit();
 }

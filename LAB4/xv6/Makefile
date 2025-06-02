@@ -190,9 +190,9 @@ UPROGS=\
 	_wc\
 	_zombie\
 	_recurse\
+	_memtest\
 	_lazytest\
 	_usertests\
-	_memtest\
 
 fs.img: mkfs README $(UPROGS)
 	./mkfs fs.img README $(UPROGS)

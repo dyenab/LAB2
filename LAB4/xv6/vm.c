@@ -330,13 +330,19 @@ copyuvm(pde_t *pgdir, uint sz)
 
   if((d = setupkvm()) == 0)
     return 0;
-  for(i = 0; i < sz; i += PGSIZE){
-
-    if((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)
-      continue; //존재하지 않는 페이지는 건너뜀
-    if(!(*pte & PTE_P))
-      continue; //매핑되지 않은 페이지는 건너뜀
-
+  for(i = 0; i < KERNBASE; i += PGSIZE){
+    static int misscount = 0;
+    if ((pte = walkpgdir(pgdir, (void*) i, 0)) == 0) {
+      if (misscount++ < 5)
+        cprintf("[copyuvm] pte missing at i=0x%x\n", i);
+      continue;
+    }
+    static int logcount = 0;
+    if (!(*pte & PTE_P)) {
+      if (logcount++ < 10)
+        cprintf("[copyuvm] pte not present at i=0x%x\n", i);
+      continue;
+    }
     pa = PTE_ADDR(*pte);
     flags = PTE_FLAGS(*pte);
     if((mem = kalloc()) == 0)
@@ -345,14 +351,12 @@ copyuvm(pde_t *pgdir, uint sz)
     if(mappages(d, (void*)i, PGSIZE, V2P(mem), flags) < 0)
       goto bad;
   }
-  
   return d;
 
 bad:
   freevm(d);
   return 0;
 }
-
 
 //PAGEBREAK!
 // Map user virtual address to kernel address.
@@ -382,9 +386,8 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
   while(len > 0){
     va0 = (uint)PGROUNDDOWN(va);
     pa0 = uva2ka(pgdir, (char*)va0);
-    if(pa0 == 0){
+    if(pa0 == 0)
       return -1;
-    }
     n = PGSIZE - (va - va0);
     if(n > len)
       n = len;
